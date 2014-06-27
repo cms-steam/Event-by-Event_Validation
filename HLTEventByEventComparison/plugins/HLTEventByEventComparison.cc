@@ -145,12 +145,24 @@ HLTEventByEventComparison::analyze(const edm::Event& iEvent, const edm::EventSet
 
   // Access Trigger Results: Target
   edm::Handle<edm::TriggerResults> triggerResultsTgt;
-  iEvent.getByToken(triggerResultsTokenRef, triggerResultsRef);
+  iEvent.getByToken(triggerResultsTokenTgt, triggerResultsTgt);
+
+  if( !triggerResultsRef.isValid() ){
+    std::cout << "Trigger results not valid for tag " << hltTagRef << std::endl;
+    return;
+  }
+  if( !triggerResultsTgt.isValid() ){
+    std::cout << "Trigger results not valid for tag " << hltTagTgt << std::endl;
+    return;
+  }
 
 
   for( unsigned int iPath=0; iPath<hlt_triggerNames_ref_.size(); iPath++ ){
     std::string name = hlt_triggerNames_ref_[iPath];
     unsigned int index = hlt_config_ref_.triggerIndex(name);
+
+    if( index >= triggerResultsRef->size() ) continue;
+
     bool accept = triggerResultsRef->accept(index);
 
     std::string pathNameNoVer = hlt_config_ref_.removeVersion(name);
@@ -167,10 +179,14 @@ HLTEventByEventComparison::analyze(const edm::Event& iEvent, const edm::EventSet
     }
   }
 
+
   for( unsigned int iPath=0; iPath<hlt_triggerNames_tgt_.size(); iPath++ ){
     std::string name = hlt_triggerNames_tgt_[iPath];
     unsigned int index = hlt_config_tgt_.triggerIndex(name);
-    bool accept = triggerResultsRef->accept(index);
+
+    if( index >= triggerResultsTgt->size() ) continue;
+
+    bool accept = triggerResultsTgt->accept(index);
 
     std::string pathNameNoVer = hlt_config_tgt_.removeVersion(name);
 
