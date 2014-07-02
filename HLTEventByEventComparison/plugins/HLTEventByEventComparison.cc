@@ -69,6 +69,8 @@ class HLTEventByEventComparison : public edm::EDAnalyzer {
 
   edm::EDGetTokenT <edm::TriggerResults> triggerResultsTokenRef;
   edm::EDGetTokenT <edm::TriggerResults> triggerResultsTokenTgt;
+  edm::EDGetTokenT <trigger::TriggerEvent> triggerSummaryTokenRef;
+  edm::EDGetTokenT <trigger::TriggerEvent> triggerSummaryTokenTgt;
 
   HLTConfigProvider hlt_config_ref_;
   HLTConfigProvider hlt_config_tgt_;
@@ -91,6 +93,10 @@ class HLTEventByEventComparison : public edm::EDAnalyzer {
   std::map<std::string, int> hlt_counts_per_path_ref_tgt_;
 
   int numEvents_;
+
+  std::map<std::string, TH1D*> h_hlt_cpfilt_ref_;
+  std::map<std::string, TH1D*> h_hlt_cpfilt_tgt_;
+
 };
 
 //
@@ -113,6 +119,9 @@ HLTEventByEventComparison::HLTEventByEventComparison(const edm::ParameterSet& iC
 
   triggerResultsTokenRef = consumes <edm::TriggerResults> (edm::InputTag(std::string("TriggerResults"), std::string(""), hltTagRef));
   triggerResultsTokenTgt = consumes <edm::TriggerResults> (edm::InputTag(std::string("TriggerResults"), std::string(""), hltTagTgt));
+
+  triggerSummaryTokenRef = consumes <trigger::TriggerEvent> (edm::InputTag(std::string("hltTriggerSummaryAOD"), std::string(""), hltTagRef));
+  triggerSummaryTokenTgt = consumes <trigger::TriggerEvent> (edm::InputTag(std::string("hltTriggerSummaryAOD"), std::string(""), hltTagTgt));
 
   numEvents_ = 0;
 }
@@ -147,12 +156,26 @@ HLTEventByEventComparison::analyze(const edm::Event& iEvent, const edm::EventSet
   edm::Handle<edm::TriggerResults> triggerResultsTgt;
   iEvent.getByToken(triggerResultsTokenTgt, triggerResultsTgt);
 
+  edm::Handle<trigger::TriggerEvent> aodTriggerEventRef;
+  iEvent.getByToken(triggerSummaryTokenRef, aodTriggerEventRef);
+
+  edm::Handle<trigger::TriggerEvent> aodTriggerEventTgt;
+  iEvent.getByToken(triggerSummaryTokenTgt, aodTriggerEventTgt);
+
   if( !triggerResultsRef.isValid() ){
     std::cout << "Trigger results not valid for tag " << hltTagRef << std::endl;
     return;
   }
   if( !triggerResultsTgt.isValid() ){
     std::cout << "Trigger results not valid for tag " << hltTagTgt << std::endl;
+    return;
+  }
+  if( !aodTriggerEventRef.isValid() ){
+    std::cout << "Trigger event not valid for tag " << hltTagRef << std::endl;
+    return;
+  }
+  if( !aodTriggerEventTgt.isValid() ){
+    std::cout << "Trigger event not valid for tag " << hltTagTgt << std::endl;
     return;
   }
 
@@ -176,6 +199,62 @@ HLTEventByEventComparison::analyze(const edm::Event& iEvent, const edm::EventSet
       int bin_num = axis->FindBin(pathNameNoVer.c_str());
       int bn = bin_num - 1;
       h_hlt_ref->Fill(bn, 1);
+    }
+
+
+    unsigned int triggerEventSize = 0;
+    if( aodTriggerEventRef.isValid() ) triggerEventSize = aodTriggerEventRef->sizeFilters();
+
+    //const std::vector<std::string>& moduleLabels = hlt_config_ref_.moduleLabels(name);
+    const std::vector<std::string>& moduleLabels = hlt_config_ref_.saveTagsModules(name);
+    int NumModules = int( moduleLabels.size() );
+
+    std::string prefix("hltPre");
+
+    for( int iMod=0; iMod<NumModules; iMod++ ){
+      std::string moduleType = hlt_config_ref_.moduleType(moduleLabels[iMod]);
+      std::string moduleEDMType = hlt_config_ref_.moduleEDMType(moduleLabels[iMod]);
+      if( !(moduleEDMType == "EDFilter") ) continue;
+      if( moduleType.find("Selector")!= std::string::npos ) continue;
+      if( moduleType == "HLTTriggerTypeFilter" || 
+	  moduleType == "HLTBool" ||
+	  moduleType == "PrimaryVertexObjectFilter" ||
+	  moduleType == "JetVertexChecker" ||
+	  moduleType == "HLTRHemisphere" ||
+	  moduleType == "DetectorStateFilter" ) continue;
+
+      if( moduleLabels[iMod].compare(0, prefix.length(), prefix) == 0 ) continue;
+
+      edm::InputTag moduleWhoseResultsWeWant(moduleLabels[iMod],"",hltTagRef);
+
+      unsigned int idx_module_trg = 0;
+      if( aodTriggerEventRef.isValid() ) idx_module_trg = aodTriggerEventRef->filterIndex(moduleWhoseResultsWeWant);
+  
+      if( !(idx_module_trg < triggerEventSize) ) continue;
+      if( h_hlt_cpfilt_ref_[pathNameNoVer] ){
+	TAxis *axis = h_hlt_cpfilt_ref_[pathNameNoVer]->GetXaxis();
+	int bin_num = axis->FindBin(moduleLabels[iMod].c_str());
+	int bn = bin_num - 1;
+	//h_hlt_cpfilt_ref_[pathNameNoVer]->Fill(bn, 1);
+
+	if( bin_num!=1 ){
+	  bool passPreviousFilters = true;
+	  for( int ibin = bin_num-1; ibin>0; ibin-- ){ 
+	    std::string previousFilter(axis->GetBinLabel(ibin));
+	    edm::InputTag previousModuleWhoseResultsWeWant(previousFilter,"",hltTagRef);
+	    unsigned int idx_previous_module_trg = 0;
+	    if( aodTriggerEventRef.isValid() ) idx_previous_module_trg = aodTriggerEventRef->filterIndex(previousModuleWhoseResultsWeWant);
+
+	    if( !(idx_previous_module_trg < triggerEventSize) ){
+	      passPreviousFilters = false;
+	      break;
+	    }
+	  }
+	  // Only fill if previous filters have been passed
+	  if( passPreviousFilters ) h_hlt_cpfilt_ref_[pathNameNoVer]->Fill(bn, 1);
+	}
+	else h_hlt_cpfilt_ref_[pathNameNoVer]->Fill(bn, 1);
+      }
     }
   }
 
@@ -201,13 +280,67 @@ HLTEventByEventComparison::analyze(const edm::Event& iEvent, const edm::EventSet
       h_hlt_tgt->Fill(bn, 1);
     }
 
-
     if( accept ){
       TAxis * axis = h_hlt_tgt_sep->GetXaxis();
       if( !axis ) continue;
       int bin_num = axis->FindBin(pathNameNoVer.c_str());
       int bn = bin_num - 1;
       h_hlt_tgt_sep->Fill(bn, 1);
+    }
+
+    unsigned int triggerEventSize = 0;
+    if( aodTriggerEventTgt.isValid() ) triggerEventSize = aodTriggerEventTgt->sizeFilters();
+
+    //const std::vector<std::string>& moduleLabels = hlt_config_tgt_.moduleLabels(name);
+    const std::vector<std::string>& moduleLabels = hlt_config_tgt_.saveTagsModules(name);
+    int NumModules = int( moduleLabels.size() );
+
+    std::string prefix("hltPre");
+
+    for( int iMod=0; iMod<NumModules; iMod++ ){
+      std::string moduleType = hlt_config_tgt_.moduleType(moduleLabels[iMod]);
+      std::string moduleEDMType = hlt_config_tgt_.moduleEDMType(moduleLabels[iMod]);
+      if( !(moduleEDMType == "EDFilter") ) continue;
+      if( moduleType.find("Selector")!= std::string::npos ) continue;
+      if( moduleType == "HLTTriggerTypeFilter" || 
+	  moduleType == "HLTBool" ||
+	  moduleType == "PrimaryVertexObjectFilter" ||
+	  moduleType == "JetVertexChecker" ||
+	  moduleType == "HLTRHemisphere" ||
+	  moduleType == "DetectorStateFilter" ) continue;
+
+      if( moduleLabels[iMod].compare(0, prefix.length(), prefix) == 0 ) continue;
+
+      edm::InputTag moduleWhoseResultsWeWant(moduleLabels[iMod],"",hltTagTgt);
+
+      unsigned int idx_module_trg = 0;
+      if( aodTriggerEventTgt.isValid() ) idx_module_trg = aodTriggerEventTgt->filterIndex(moduleWhoseResultsWeWant);
+  
+      if( !(idx_module_trg < triggerEventSize) ) continue;
+      if( h_hlt_cpfilt_tgt_[pathNameNoVer] ){
+	TAxis *axis = h_hlt_cpfilt_tgt_[pathNameNoVer]->GetXaxis();
+	int bin_num = axis->FindBin(moduleLabels[iMod].c_str());
+	int bn = bin_num - 1;
+	//h_hlt_cpfilt_tgt_[pathNameNoVer]->Fill(bn, 1);
+
+	if( bin_num!=1 ){
+	  bool passPreviousFilters = true;
+	  for( int ibin = bin_num-1; ibin>0; ibin-- ){ 
+	    std::string previousFilter(axis->GetBinLabel(ibin));
+	    edm::InputTag previousModuleWhoseResultsWeWant(previousFilter,"",hltTagTgt);
+	    unsigned int idx_previous_module_trg = 0;
+	    if( aodTriggerEventTgt.isValid() ) idx_previous_module_trg = aodTriggerEventTgt->filterIndex(previousModuleWhoseResultsWeWant);
+
+	    if( !(idx_previous_module_trg < triggerEventSize) ){
+	      passPreviousFilters = false;
+	      break;
+	    }
+	  }
+	  // Only fill if previous filters have been passed
+	  if( passPreviousFilters ) h_hlt_cpfilt_tgt_[pathNameNoVer]->Fill(bn, 1);
+	}
+	else h_hlt_cpfilt_tgt_[pathNameNoVer]->Fill(bn, 1);
+      }
     }
   }
 
@@ -308,6 +441,8 @@ HLTEventByEventComparison::beginRun(edm::Run const& iRun, edm::EventSetup const&
   h_hlt_tgt = fs->make<TH1D>("HLT_Tgt",";HLT path", numHLT_ref , 0 , numHLT_ref );
   h_hlt_tgt_sep = fs->make<TH1D>("HLT_Tgt_sep",";HLT path", numHLT_tgt , 0 , numHLT_tgt );
 
+
+
   for( unsigned int iPath=0; iPath<numHLT_ref; iPath++ ){
     std::string pathNameNoVer = hlt_config_ref_.removeVersion(hlt_triggerNames_ref_[iPath]);
     int jPath = iPath+1;
@@ -319,6 +454,42 @@ HLTEventByEventComparison::beginRun(edm::Run const& iRun, edm::EventSetup const&
       TAxis * axis = h_hlt_tgt->GetXaxis();
       if( axis ) axis->SetBinLabel(jPath, pathNameNoVer.c_str());
     }
+
+    //const std::vector<std::string>& moduleLabels = hlt_config_ref_.moduleLabels(hlt_triggerNames_ref_[iPath]);
+    const std::vector<std::string>& moduleLabels = hlt_config_ref_.saveTagsModules(hlt_triggerNames_ref_[iPath]);
+    int NumModules = int( moduleLabels.size() );
+
+    std::string prescaleprefix("hltPre");
+
+    std::vector<std::string> good_module_names;
+    for( int iMod=0; iMod<NumModules; iMod++ ){
+      std::string moduleType = hlt_config_ref_.moduleType(moduleLabels[iMod]);
+      std::string moduleEDMType = hlt_config_ref_.moduleEDMType(moduleLabels[iMod]);
+      if( !(moduleEDMType == "EDFilter") ) continue;
+      if( moduleType.find("Selector")!= std::string::npos ) continue;
+      if( moduleType == "HLTTriggerTypeFilter" || 
+	  moduleType == "HLTBool" ||
+	  moduleType == "PrimaryVertexObjectFilter" ||
+	  moduleType == "JetVertexChecker" ||
+	  moduleType == "HLTRHemisphere" ||
+	  moduleType == "DetectorStateFilter" ) continue;
+
+      if( moduleLabels[iMod].compare(0, prescaleprefix.length(), prescaleprefix) == 0 ) continue;
+      good_module_names.push_back(moduleLabels[iMod]);
+    }
+
+    int NumGoodModules = int( good_module_names.size() );
+
+    if( NumGoodModules==0 ) continue;
+
+    std::string pathName = "h_path_ref_" + pathNameNoVer;
+
+    h_hlt_cpfilt_ref_[pathNameNoVer] = fs->make<TH1D>(pathName.c_str(),";HLT path filters", NumGoodModules , 0 , NumGoodModules );
+
+    for( int iMod=0; iMod<NumGoodModules; iMod++ ){
+      TAxis * axis = h_hlt_cpfilt_ref_[pathNameNoVer]->GetXaxis();
+      if( axis ) axis->SetBinLabel(iMod+1,good_module_names[iMod].c_str());
+    }
   }
 
 
@@ -329,14 +500,50 @@ HLTEventByEventComparison::beginRun(edm::Run const& iRun, edm::EventSetup const&
       TAxis * axis = h_hlt_tgt_sep->GetXaxis();
       if( axis ) axis->SetBinLabel(jPath, pathNameNoVer.c_str());
     }
+
+    //const std::vector<std::string>& moduleLabels = hlt_config_tgt_.moduleLabels(hlt_triggerNames_tgt_[iPath]);
+    const std::vector<std::string>& moduleLabels = hlt_config_tgt_.saveTagsModules(hlt_triggerNames_tgt_[iPath]);
+    int NumModules = int( moduleLabels.size() );
+
+    std::string prescaleprefix("hltPre");
+
+    std::vector<std::string> good_module_names;
+    for( int iMod=0; iMod<NumModules; iMod++ ){
+      std::string moduleType = hlt_config_tgt_.moduleType(moduleLabels[iMod]);
+      std::string moduleEDMType = hlt_config_tgt_.moduleEDMType(moduleLabels[iMod]);
+      if( !(moduleEDMType == "EDFilter") ) continue;
+      if( moduleType.find("Selector")!= std::string::npos ) continue;
+      if( moduleType == "HLTTriggerTypeFilter" || 
+	  moduleType == "HLTBool" ||
+	  moduleType == "PrimaryVertexObjectFilter" ||
+	  moduleType == "JetVertexChecker" ||
+	  moduleType == "HLTRHemisphere" ||
+	  moduleType == "DetectorStateFilter" ) continue;
+
+      if( moduleLabels[iMod].compare(0, prescaleprefix.length(), prescaleprefix) == 0 ) continue;
+      good_module_names.push_back(moduleLabels[iMod]);
+    }
+
+    int NumGoodModules = int( good_module_names.size() );
+
+    if( NumGoodModules==0 ) continue;
+
+    std::string pathName = "h_path_tgt_" + pathNameNoVer;
+
+    h_hlt_cpfilt_tgt_[pathNameNoVer] = fs->make<TH1D>(pathName.c_str(),";HLT path filters", NumGoodModules , 0 , NumGoodModules );
+
+    for( int iMod=0; iMod<NumGoodModules; iMod++ ){
+      TAxis * axis = h_hlt_cpfilt_tgt_[pathNameNoVer]->GetXaxis();
+      if( axis ) axis->SetBinLabel(iMod+1,good_module_names[iMod].c_str());
+    }
   }
 
   std::cout << "=====================" << std::endl;
-  std::cout << "  Reference HLT " << std::endl;
+  std::cout << "  Reference HLT: Number of triggers = " << numHLT_ref << std::endl;
   for( unsigned int iPath=0; iPath<numHLT_ref; iPath++ ){
     std::string name = hlt_triggerNames_ref_[iPath];
     std::string pathNameNoVer = hlt_config_ref_.removeVersion(name);
-    std::cout << "\t" << name << "\t" << pathNameNoVer << std::endl;
+    std::cout << "\t reference: " << name << "\t" << pathNameNoVer << std::endl;
   }
 
   std::cout << "=====================" << std::endl;
@@ -344,7 +551,7 @@ HLTEventByEventComparison::beginRun(edm::Run const& iRun, edm::EventSetup const&
   for( unsigned int iPath=0; iPath<numHLT_tgt; iPath++ ){
     std::string name = hlt_triggerNames_tgt_[iPath];
     std::string pathNameNoVer = hlt_config_tgt_.removeVersion(name);
-    std::cout << "\t" << name << "\t" << pathNameNoVer << std::endl;
+    std::cout << "\t target: " << name << "\t" << pathNameNoVer << std::endl;
   }
   std::cout << "=====================" << std::endl;
 
@@ -408,3 +615,4 @@ HLTEventByEventComparison::fillDescriptions(edm::ConfigurationDescriptions& desc
 
 //define this as a plug-in
 DEFINE_FWK_MODULE(HLTEventByEventComparison);
+
