@@ -73,7 +73,7 @@ if __name__=='__main__':
    output_DoubleTau = open(output_file_dir+'DoubleTau.csv',"w")
    output_EleMu = open(output_file_dir+'EleMu.csv',"w")
    output_EleTau = open(output_file_dir+'EleTau.csv',"w")
-   output_MuTau = open(output_file_dir+'EleTau.csv',"w")
+   output_MuTau = open(output_file_dir+'MuTau.csv',"w")
    output_SingleEle = open(output_file_dir+'SingleEle.csv',"w")
    output_SingleMu = open(output_file_dir+'SingleMu.csv',"w")
    output_SingleTau = open(output_file_dir+'SingleTau.csv',"w")
