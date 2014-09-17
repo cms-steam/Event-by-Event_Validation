@@ -1,19 +1,38 @@
-#!/usr/bin/python
-from ROOT import TFile,TTree,TH2F, TCanvas, gROOT
-import sys, time, array, subprocess, commands, re, string
+#shebang
+from ROOT import TFile,TTree,TH2F, TH1D, TH1F, TPie, TPad, TLegend, TCanvas, gROOT
+import sys, os, time, array, subprocess, commands, re, string
+import jinja2 
+
+from os.path import expanduser
+from collections import defaultdict
+from datetime import datetime
+
 gROOT.SetBatch()
 
 start_time = time.time()
 
 def writeTable(file,dict_num,dict_str):
-   file.write("HLT PATH,dataset,module,total counts in rel0,total counts in rel1,change, absolute change, events firing rel0 not rel1, events firing rel1 not rel0, sum of changed events, change of event change, absolute event change\n")
+   file.write("HLT PATH,dataset,module,total counts in rel0,total counts in rel1,change, absolute change, events firing rel0 not rel1, events firing rel1 not rel0, sum of changed events\n")
    for key in dict_num.keys(): 
       if abs(dict_num[key][0]-dict_num[key][1]) > 0 or dict_num[key][3]+dict_num[key][2] > 0:
-
-         file.write("%(1)s, %(2)s, %(3)s, %(4)s, %(5)s, %(6)s, %(7)s, %(8)s, %(9)s, %(10)s, %(11)s, %(12)s\n"%{"1":key, "2":dict_str[key][0],"3":dict_str[key][1],"4":dict_num[key][0],"5":dict_num[key][1],"6":dict_num[key][1]-dict_num[key][0], "7":abs(dict_num[key][1]-dict_num[key][0]),"8":dict_num[key][2],"9":dict_num[key][3],"10":dict_num[key][2]+dict_num[key][3],"11":dict_num[key][3]-dict_num[key][2],"12":abs(dict_num[key][3]-dict_num[key][2])})
+         file.write("%(1)s, %(2)s, %(3)s, %(4)s, %(5)s, %(6)s, %(7)s, %(8)s, %(9)s, %(10)s\n"%{"1":key, "2":dict_str[key][0],"3":dict_str[key][1],"4":dict_num[key][0],"5":dict_num[key][1],"6":dict_num[key][1]-dict_num[key][0], "7":abs(dict_num[key][1]-dict_num[key][0]),"8":dict_num[key][2],"9":dict_num[key][3],"10":dict_num[key][2]+dict_num[key][3]})
    file.close()
    return file
 
+def make_list(dict_num,dict_str):
+   list_of_lists = []
+   for key in dict_num.keys():
+      if abs(dict_num[key][0]-dict_num[key][1]) > 0 or dict_num[key][3]+dict_num[key][2] > 0:
+         list = [key,dict_str[key][0],dict_str[key][1],dict_num[key][0],dict_num[key][1],dict_num[key][1]-dict_num[key][0],abs(dict_num[key][1]-dict_num[key][0]),dict_num[key][2],dict_num[key][3],dict_num[key][2]+dict_num[key][3]]
+         list_of_lists.append(list)
+   return list_of_lists
+
+#list_of_lists = [[path1],[path2],[path3],....,[pathN]]
+#[pathN] = [dict_str[key][0],dict_str[key][1]]
+#[HLT_M] = [dataset, module, counts rel0, counts rel0, change in counts, absolute change in counts, fired rel0 not 1, fired rel1 not 0, # of changed events]
+# # of changed events = # of times a path fired in rel0, not rel1 + times it fired in 1 not 0
+# 
+ 
 def GetDecayType(gen_tree):
    num_ele=0
    num_mu=0
@@ -59,34 +78,36 @@ def StripVersion(name):
 #def main():
 if __name__=='__main__':
 
-   rel0 = 'Fal13_50ns_POSTLS170_V5'
-   rel1 = 'Fal13_50ns_PRE_LS171_V6A'
-   output_file_dir = '/afs/cern.ch/user/m/muell149/steam_validation/trash'+rel0+'_'+rel1+'/'
-   #output_file_dir = 'test'
+   rel0 = '720p4'
+   rel1 = '720p5'
+   output_file_dir = '/afs/cern.ch/user/m/muell149/steam_validation/'+rel0+'_'+rel1+'/'
+   data_dir='data/'
 
    subprocess.call("mkdir "+output_file_dir,shell=True)
-   output_log = open(output_file_dir+rel0+'_'+rel1+'_compare_output.log',"w")
+   subprocess.call("mkdir "+output_file_dir+data_dir,shell=True)
 
-   output_table = open(output_file_dir+rel0+'_'+rel1+'_compare_output_table.csv',"w")
-   output_DoubleEle = open(output_file_dir+'DoubleEle.csv',"w")
-   output_DoubleMu = open(output_file_dir+'DoubleMu.csv',"w")
-   output_DoubleTau = open(output_file_dir+'DoubleTau.csv',"w")
-   output_EleMu = open(output_file_dir+'EleMu.csv',"w")
-   output_EleTau = open(output_file_dir+'EleTau.csv',"w")
-   output_MuTau = open(output_file_dir+'EleTau.csv',"w")
-   output_SingleEle = open(output_file_dir+'SingleEle.csv',"w")
-   output_SingleMu = open(output_file_dir+'SingleMu.csv',"w")
-   output_SingleTau = open(output_file_dir+'SingleTau.csv',"w")
-   output_AllHad = open(output_file_dir+'AllHad.csv',"w")
+   output_log = open(output_file_dir+data_dir+rel0+'_'+rel1+'_compare_output.log',"w")
+
+   output_table = open(output_file_dir+data_dir+'all_decay_types.csv',"w")
+   output_DoubleEle = open(output_file_dir+data_dir+'DoubleEle.csv',"w")
+   output_DoubleMu = open(output_file_dir+data_dir+'DoubleMu.csv',"w")
+   output_DoubleTau = open(output_file_dir+data_dir+'DoubleTau.csv',"w")
+   output_EleMu = open(output_file_dir+data_dir+'EleMu.csv',"w")
+   output_EleTau = open(output_file_dir+data_dir+'EleTau.csv',"w")
+   output_MuTau = open(output_file_dir+data_dir+'MuTau.csv',"w")
+   output_SingleEle = open(output_file_dir+data_dir+'SingleEle.csv',"w")
+   output_SingleMu = open(output_file_dir+data_dir+'SingleMu.csv',"w")
+   output_SingleTau = open(output_file_dir+data_dir+'SingleTau.csv',"w")
+   output_AllHad = open(output_file_dir+data_dir+'AllHad.csv',"w")
    file_list = [output_table,output_DoubleEle,output_DoubleMu,output_DoubleTau,output_EleMu,output_EleTau,output_MuTau,output_SingleEle,output_SingleMu,output_SingleTau,output_AllHad]
 
    #output_event_changes = open('event_changes.csv',"w")
-   file0 = 'Fal13_50ns_origv1.root'
-   file1 = 'Fal13_50ns_new_v1_HLTGRun.root'
+   file0 = '720p4.root'
+   file1 = '720p5.root'
    file_rel0 = TFile(file0)
    file_rel1 = TFile(file1)
-   hlt_tree0 = file_rel0.Get('genparticles/the_HLT_tree')
-   hlt_tree1 = file_rel1.Get('genparticles/the_HLT_tree')
+   hlt_tree0 = file_rel0.Get('genparticles/the_HLT_tree_A')
+   hlt_tree1 = file_rel1.Get('genparticles/the_HLT_tree_A')
    gen_tree0 = file_rel0.Get('genparticles/the_gen_tree')
    gen_tree1 = file_rel1.Get('genparticles/the_gen_tree')
       
@@ -116,13 +137,6 @@ if __name__=='__main__':
    datasetIDX_v_path = {'path': 0}
    get_gen_entries0_from_event = {0:0} #event number : entry number
    get_gen_entries1_from_event = {0:0}
-   #rel0not1_ds_dict = {'dataset':0}
-   #rel1not0_ds_dict ={'dataset':0}
-   rel0not1_dt_dict = {}#{'decay type':0}
-   rel1not0_dt_dict = {}#{'decay type':0}
-   for k in xrange(10):
-      rel0not1_dt_dict[k+1] = 0
-      rel1not0_dt_dict[k+1] = 0
    
    path_str_dict = {}#{'path':['dataset','module']}
    event_dict = {}#{'event':['changed','fired 0not1','fired 1not0']}
@@ -133,6 +147,7 @@ if __name__=='__main__':
    #make hists
    fired_rel0_not1_decayType_vs_dataset = TH2F("fired_rel0_didntfire_rel1_decay_type_vs_datasets","fired_rel0_didntfire_rel1_decay_type_vs_datasets",44,0,44,11,0,11)
    #fired_rel1_not0_decayType_vs_dataset= TH2F("fired_rel1_didntfire_rel0_decay_type_vs_datasets","fired_rel1_didntfire_rel0_decay_type_vs_datasets",44,0,44,11,0,11)
+
    #set some bin labels
    fired_rel0_not1_decayType_vs_dataset.GetYaxis().SetBinLabel(1,"Double Ele")
    fired_rel0_not1_decayType_vs_dataset.GetYaxis().SetBinLabel(2,"Double Mu")
@@ -199,6 +214,7 @@ if __name__=='__main__':
    hlt_tree1.SetBranchAddress("last_module_with_saved_tags_label",hlt_module1)
 
    #new loop stuff.....
+   print "before new loops ", time.time()-start_time
    evt_dct0 = {} #event num, entry in tree
    event_br0 = hlt_tree0.GetBranch("event")
    br0_entries = event_br0.GetEntries()
@@ -235,7 +251,7 @@ if __name__=='__main__':
       if evt_dctL.has_key(key):
          s_key=key
          break
-
+   print "after new loops, before trigger list ", time.time()-start_time
    print "found a good key"
    index_map={}
    for trg0 in xrange(len(evt_dct0[s_key])):
@@ -247,22 +263,21 @@ if __name__=='__main__':
          if n1 == n2:
             index_map[trg0]=trg1
 
-            
+   print "after tirgger list loops, before major loop ", time.time()-start_time
+
    print "map generated, length = ",len(index_map)," starting loop"
-   print index_map
-   
+#   print index_map
+#   c=0
    for key in evt_dctS.keys():
       if evt_dctL.has_key(key):
-         #for trg in xrange(len(evt_dct0[key])):
+         # if c > 100:
+         #    print "break"
+         #    break
+         # c+=1
          for keyb in index_map.keys():
+            #print "start of inner loop ", time.time()-start_time
             hlt_tree0.GetEntry(evt_dct0[key][keyb])
             hlt_tree1.GetEntry(evt_dct1[key][index_map[keyb]])
-
-
-            print hlt_path_name0.tostring()[:hlt_path_name0.tostring().find('\x00')]
-            print hlt_path_name1.tostring()[:hlt_path_name1.tostring().find('\x00')]
-            print "==================="
-            
             
             if hlt_event0[0] > evt0:
                evt0 = hlt_event0[0]
@@ -299,11 +314,12 @@ if __name__=='__main__':
                datasetIDX_v_path[name] = num_PD
 
 ###################### stuff for primary datasets ################
-
+            #print "after PD stuff ", time.time()-start_time
             path_str_dict[name][1] = module
             decaytype = GetDecayType(gen_tree0)
-            
+                        
             if hlt_path_accept0[0]:
+               
                fired_rel0.Fill(datasetIDX_v_path[name]-1,decaytype-1)
                try:
                   output_list[0][name][0] += 1
@@ -317,17 +333,16 @@ if __name__=='__main__':
                if not hlt_path_accept1[0]:
                   output_list[0][name][2] += 1
                   output_list[decaytype][name][2] += 1
+                  fired_rel0_not1_decayType_vs_dataset.Fill(datasetIDX_v_path[name]-1,decaytype-1)
                   try:
                      event_dict[event][0] += 1
                      event_dict[event][1] += 1
                   except KeyError:
                      event_dict[event] = [1,1,0]
-                  
-                  rel0not1_dt_dict[decaytype] += 1
-                  fired_rel0_not1_decayType_vs_dataset.Fill(datasetIDX_v_path[name]-1,decaytype-1)
-            
+                              
 
             if hlt_path_accept1[0]:
+
                fired_rel1.Fill(datasetIDX_v_path[name]-1,decaytype-1)
                
                try:
@@ -342,25 +357,24 @@ if __name__=='__main__':
                if not hlt_path_accept0[0]:
                   output_list[0][name][3] += 1
                   output_list[decaytype][name][3] += 1
+                  fired_rel1_not0_decayType_vs_dataset.Fill(datasetIDX_v_path[name]-1,decaytype-1)
                   try:
                      event_dict[event][0] += 1
                      event_dict[event][2] += 1
                   except KeyError:
                      event_dict[event] = [1,0,1]
+            #print "end of inner loop ", time.time()-start_time
                   
-                  rel1not0_dt_dict[decaytype] += 1
-                  fired_rel1_not0_decayType_vs_dataset.Fill(datasetIDX_v_path[name]-1,decaytype-1)
-            #output_event_changes.write("%(1)s,%(2)s,%(3)s,0,1\n"%{"1":fired_rel1_not0_decayType_vs_dataset.GetYaxis().GetBinLabel(decaytype),"2":dataset_v_path[name],"3":name})
-
-                              
-
    #####
-   sum_path_fired0_not1 = len([arr[2] for arr in output_list[0].values() if arr[2]!=0])
-   sum_path_fired1_not0 = len([arr[3] for arr in output_list[0].values() if arr[3]!=0])
-   sum_event_fired0_not1 = len([arr[1] for arr in event_dict.values() if arr[1]!=0])
-   sum_event_fired1_not0 = len([arr[2] for arr in event_dict.values() if arr[2]!=0])
+   print "after main event loop, before log writing ", time.time()-start_time
    sum_path_accpt0 = len([arr[0] for arr in output_list[0].values() if arr[0]!=0])
    sum_path_accpt1 = len([arr[1] for arr in output_list[0].values() if arr[1]!=0])
+   sum_path_fired0_not1 = len([arr[2] for arr in output_list[0].values() if arr[2]!=0])
+   sum_path_fired1_not0 = len([arr[3] for arr in output_list[0].values() if arr[3]!=0])
+
+   sum_event_fired0_not1 = len([arr[1] for arr in event_dict.values() if arr[1]!=0])
+   sum_event_fired1_not0 = len([arr[2] for arr in event_dict.values() if arr[2]!=0])
+
    sum_changes = len([arr[0] for arr in event_dict.values() if arr[0]!=0])
 
    output_log.write("Events in rel0: %s\n"%evt0)
@@ -378,44 +392,108 @@ if __name__=='__main__':
    output_log.write("total # of events in %(1)s: %(2)s\n"%{"1":rel0,"2":entries0/(pidx0+1)})
    output_log.write("total # of events in %(1)s: %(2)s\n"%{"1":rel1,"2":entries1/(pidx1+1)})
    output_log.write(" \n")
-   output_log.write("Events that gained counts by decay type\n")
-   output_log.write("Double Ele: %s\n"%rel1not0_dt_dict[1])
-   output_log.write("Double Mu: %s\n"%rel1not0_dt_dict[2])
-   output_log.write("Double Tau: %s\n"%rel1not0_dt_dict[3])
-   output_log.write("Ele + Mu: %s\n"%rel1not0_dt_dict[4])
-   output_log.write("Ele + Tau: %s\n"%rel1not0_dt_dict[5])
-   output_log.write("Mu + Tau: %s\n"%rel1not0_dt_dict[6])
-   output_log.write("Single Ele: %s\n"%rel1not0_dt_dict[7])
-   output_log.write("Single Mu: %s\n"%rel1not0_dt_dict[8])
-   output_log.write("Single Tau: %s\n"%rel1not0_dt_dict[9])
-   output_log.write("All Had: %s\n"%rel1not0_dt_dict[10])
+   output_log.write("# of times a path gained counts by decay type\n")
+   output_log.write("Double Ele: %s\n"%sum([arr[3] for arr in output_list[1].values() if arr[3]!=0]))
+   output_log.write("Double Mu: %s\n"%sum([arr[3] for arr in output_list[2].values() if arr[3]!=0]))
+   output_log.write("Double Tau: %s\n"%sum([arr[3] for arr in output_list[3].values() if arr[3]!=0]))
+   output_log.write("Ele + Mu: %s\n"%sum([arr[3] for arr in output_list[4].values() if arr[3]!=0]))
+   output_log.write("Ele + Tau: %s\n"%sum([arr[3] for arr in output_list[5].values() if arr[3]!=0]))
+   output_log.write("Mu + Tau: %s\n"%sum([arr[3] for arr in output_list[6].values() if arr[3]!=0]))
+   output_log.write("Single Ele: %s\n"%sum([arr[3] for arr in output_list[7].values() if arr[3]!=0]))
+   output_log.write("Single Mu: %s\n"%sum([arr[3] for arr in output_list[8].values() if arr[3]!=0]))
+   output_log.write("Single Tau: %s\n"%sum([arr[3] for arr in output_list[9].values() if arr[3]!=0]))
+   output_log.write("All Had: %s\n"%sum([arr[3] for arr in output_list[10].values() if arr[3]!=0]))
    output_log.write(" \n")
-   output_log.write("Events that lost counts by decay type\n")
-   output_log.write("Double Ele: %s\n"%rel0not1_dt_dict[1])
-   output_log.write("Double Mu: %s\n"%rel0not1_dt_dict[2])
-   output_log.write("Double Tau: %s\n"%rel0not1_dt_dict[3])
-   output_log.write("Ele + Mu: %s\n"%rel0not1_dt_dict[4])
-   output_log.write("Ele + Tau: %s\n"%rel0not1_dt_dict[5])
-   output_log.write("Mu + Tau: %s\n"%rel0not1_dt_dict[6])
-   output_log.write("Single Ele: %s\n"%rel0not1_dt_dict[7])
-   output_log.write("Single Mu: %s\n"%rel0not1_dt_dict[8])
-   output_log.write("Single Tau: %s\n"%rel0not1_dt_dict[9])
-   output_log.write("All Had: %s\n"%rel0not1_dt_dict[10])
+   output_log.write("# of times a path lost counts by decay type\n")
+   output_log.write("Double Ele: %s\n"%sum([arr[2] for arr in output_list[1].values() if arr[2]!=0]))
+   output_log.write("Double Mu: %s\n"%sum([arr[2] for arr in output_list[2].values() if arr[2]!=0]))
+   output_log.write("Double Tau: %s\n"%sum([arr[2] for arr in output_list[3].values() if arr[2]!=0]))
+   output_log.write("Ele + Mu: %s\n"%sum([arr[2] for arr in output_list[4].values() if arr[2]!=0]))
+   output_log.write("Ele + Tau: %s\n"%sum([arr[2] for arr in output_list[5].values() if arr[2]!=0]))
+   output_log.write("Mu + Tau: %s\n"%sum([arr[2] for arr in output_list[6].values() if arr[2]!=0]))
+   output_log.write("Single Ele: %s\n"%sum([arr[2] for arr in output_list[7].values() if arr[2]!=0]))
+   output_log.write("Single Mu: %s\n"%sum([arr[2] for arr in output_list[8].values() if arr[2]!=0]))
+   output_log.write("Single Tau: %s\n"%sum([arr[2] for arr in output_list[9].values() if arr[2]!=0]))
+   output_log.write("All Had: %s\n"%sum([arr[2] for arr in output_list[10].values() if arr[2]!=0]))
    output_log.write(" \n")
    output_log.write("Fractional change in events from %(1)s to %(2)s: %(3)s  percent\n"%{"1":rel0,"2":rel1,"3":100.00*sum_changes*(pidx0+1)/entries0})
    exectime = time.time()-start_time
    output_log.write("Exectution time = %f\n"%exectime)
    output_log.close()
 
+   print "after log writing, before table writing ", time.time()-start_time
+
    for i in xrange(11):
       writeTable(file_list[i],output_list[i],path_str_dict)
+   
+   print "after table writing loop ", time.time()-start_time
 
-   #output_event_changes.close()
+   summary_list = make_list(output_list[0],path_str_dict)
+   #sort the list based on the last element
+   summary_list.sort(key = lambda row: row[-1],reverse=True)
+
+   overview_list = []
+   overview_list.append("Events in rel0: %s\n"%evt0)
+   overview_list.append("Events in rel1: %s\n"%evt1)
+
+   overview_list.append("Paths in rel0: %s\n"%pidx0)
+   overview_list.append("Paths in rel1: %s\n"%pidx1)
+   overview_list.append("events with paths that fired in %(1)s and didnt fire in %(2)s : %(3)s\n"%{"1":rel0,"2":rel1,"3":sum_event_fired0_not1}) 
+   overview_list.append("events with paths that fired in %(1)s and didnt fire in %(2)s : %(3)s\n"%{"1":rel1,"2":rel0,"3":sum_event_fired1_not0})
+   overview_list.append("# of paths accepted in %(1)s: %(2)s\n"%{"1":rel0,"2":sum_path_accpt0})
+   overview_list.append("# of paths accepted in %(1)s: %(2)s\n"%{"1":rel1,"2":sum_path_accpt1})
+   overview_list.append("# of paths that fired in %(1)s  and didn't fire in %(2)s: %(3)s\n"%{"1":rel0,"2":rel1,"3": sum_path_fired0_not1})
+   overview_list.append("# of paths that fired in %(1)s  and didn't fire in %(2)s: %(3)s\n"%{"1":rel1,"2":rel0,"3": sum_path_fired1_not0})
+   overview_list.append("# of events that changed from %(1)s to %(2)s: %(3)s\n"%{"1":rel0,"2":rel1,"3":sum_changes})
+   overview_list.append("total # of events in %(1)s: %(2)s\n"%{"1":rel0,"2":entries0/(pidx0+1)})
+   overview_list.append("total # of events in %(1)s: %(2)s\n"%{"1":rel1,"2":entries1/(pidx1+1)})
+   overview_list.append(" \n")
+   overview_list.append("# of times a path gained counts by decay type\n")
+   overview_list.append("Double Ele: %s\n"%sum([arr[3] for arr in output_list[1].values() if arr[3]!=0]))
+   overview_list.append("Double Mu: %s\n"%sum([arr[3] for arr in output_list[2].values() if arr[3]!=0]))
+   overview_list.append("Double Tau: %s\n"%sum([arr[3] for arr in output_list[3].values() if arr[3]!=0]))
+   overview_list.append("Ele + Mu: %s\n"%sum([arr[3] for arr in output_list[4].values() if arr[3]!=0]))
+   overview_list.append("Ele + Tau: %s\n"%sum([arr[3] for arr in output_list[5].values() if arr[3]!=0]))
+   overview_list.append("Mu + Tau: %s\n"%sum([arr[3] for arr in output_list[6].values() if arr[3]!=0]))
+   overview_list.append("Single Ele: %s\n"%sum([arr[3] for arr in output_list[7].values() if arr[3]!=0]))
+   overview_list.append("Single Mu: %s\n"%sum([arr[3] for arr in output_list[8].values() if arr[3]!=0]))
+   overview_list.append("Single Tau: %s\n"%sum([arr[3] for arr in output_list[9].values() if arr[3]!=0]))
+   overview_list.append("All Had: %s\n"%sum([arr[3] for arr in output_list[10].values() if arr[3]!=0]))
+   overview_list.append(" \n")
+   overview_list.append("# of times a path lost counts by decay type\n")
+   overview_list.append("Double Ele: %s\n"%sum([arr[2] for arr in output_list[1].values() if arr[2]!=0]))
+   overview_list.append("Double Mu: %s\n"%sum([arr[2] for arr in output_list[2].values() if arr[2]!=0]))
+   overview_list.append("Double Tau: %s\n"%sum([arr[2] for arr in output_list[3].values() if arr[2]!=0]))
+   overview_list.append("Ele + Mu: %s\n"%sum([arr[2] for arr in output_list[4].values() if arr[2]!=0]))
+   overview_list.append("Ele + Tau: %s\n"%sum([arr[2] for arr in output_list[5].values() if arr[2]!=0]))
+   overview_list.append("Mu + Tau: %s\n"%sum([arr[2] for arr in output_list[6].values() if arr[2]!=0]))
+   overview_list.append("Single Ele: %s\n"%sum([arr[2] for arr in output_list[7].values() if arr[2]!=0]))
+   overview_list.append("Single Mu: %s\n"%sum([arr[2] for arr in output_list[8].values() if arr[2]!=0]))
+   overview_list.append("Single Tau: %s\n"%sum([arr[2] for arr in output_list[9].values() if arr[2]!=0]))
+   overview_list.append("All Had: %s\n"%sum([arr[2] for arr in output_list[10].values() if arr[2]!=0]))
+   overview_list.append(" \n")
+   overview_list.append("Fractional change in events from %(1)s to %(2)s: %(3)s  percent\n"%{"1":rel0,"2":rel1,"3":100.00*sum_changes*(pidx0+1)/entries0})
+   exectime = time.time()-start_time
+   overview_list.append("Exectution time = %f\n"%exectime)
+
+
+   print "after list appendings, before plotting ", time.time()-start_time
+
    print "Execution time = ", time.time()-start_time," sec"
 
-               
+   # pi_list=[100.00*sum_changes*(pidx0+1)/entries0,1-(100.00*sum_changes*(pidx0+1)/entries0)]
+   # can0 = TCanvas("pie","pie",1)
+   # Pie = TPie("piea","pieb",2,pi_list)
+   # Pie.GetSlice(0).SetLabel("% changed events")
+   # Pie.GetSlice(1).SetLabel("% un-changed events")
+   # Pie.SetAngularOffset(30.)
+   # Pie.SetEntryRadiusOffset(4,0.1)
+   # Pie.SetEntryRadius(.35)
+   # Pie.Draw("3d")
+   # can0.SaveAs(output_file_dir+data_dir+"pie.png")
+
    #draw hists
-   hist_file = TFile(output_file_dir+"hist_file_"+rel0+"_"+rel1+".root","recreate")
+   hist_file = TFile(output_file_dir+data_dir+"hist_file_"+rel0+"_"+rel1+".root","recreate")
    title = fired_rel0_not1_decayType_vs_dataset.GetName()
    can1 = TCanvas(title,title,1)
    fired_rel0_not1_relative_decayType_vs_dataset = fired_rel0_not1_decayType_vs_dataset.Clone()
@@ -427,7 +505,7 @@ if __name__=='__main__':
    fired_rel0_not1_decayType_vs_dataset.Draw("COLZ")
    can1.SetBottomMargin(0.19)
    can1.SetGrid()
-   can1.SaveAs(output_file_dir+"decayType_vs_dataset_0not1.png")
+   can1.SaveAs(output_file_dir+data_dir+"decayType_vs_dataset_0not1.png")
    fired_rel0_not1_decayType_vs_dataset.SetOption("COLZ")
    fired_rel0_not1_decayType_vs_dataset.Write()
    #can1.SaveAs("decayType_vs_dataset_0not1.root")
@@ -440,7 +518,7 @@ if __name__=='__main__':
    fired_rel1_not0_decayType_vs_dataset.Draw("COLZ")
    can2.SetBottomMargin(0.19)
    can2.SetGrid()
-   can2.SaveAs(output_file_dir+"decayType_vs_dataset_1not0.png")
+   can2.SaveAs(output_file_dir+data_dir+"decayType_vs_dataset_1not0.png")
    fired_rel1_not0_decayType_vs_dataset.SetOption("COLZ")
    fired_rel1_not0_decayType_vs_dataset.Write()
    #can2.SaveAs("decayType_vs_dataset_1not0.root")
@@ -456,7 +534,7 @@ if __name__=='__main__':
    fired_rel0_not1_relative_decayType_vs_dataset.Draw("COLZ")
    can3.SetBottomMargin(0.19)
    can3.SetGrid()
-   can3.SaveAs(output_file_dir+"decayType_vs_dataset_0not1_relative.png")
+   can3.SaveAs(output_file_dir+data_dir+"decayType_vs_dataset_0not1_relative.png")
    fired_rel0_not1_relative_decayType_vs_dataset.SetOption("COLZ")
    fired_rel0_not1_relative_decayType_vs_dataset.Write()
    
@@ -468,11 +546,114 @@ if __name__=='__main__':
    fired_rel1_not0_relative_decayType_vs_dataset.Draw("COLZ")
    can4.SetBottomMargin(0.19)
    can4.SetGrid()
-   can4.SaveAs(output_file_dir+"decayType_vs_dataset_1not0_relative.png")
+   can4.SaveAs(output_file_dir+data_dir+"decayType_vs_dataset_1not0_relative.png")
    fired_rel1_not0_relative_decayType_vs_dataset.SetOption("COLZ")
    fired_rel1_not0_relative_decayType_vs_dataset.Write()
+   
+   #final plot
+   hist0 = file_rel0.Get('newHLTOffline/hlt_count_hist')
+   hist1 = file_rel1.Get('newHLTOffline/hlt_count_hist')#eventbyevent/HLT_Tgt')
+   
+   bin_dict0 = {} 
+   bin_dict1 = {}
+   bin_list = []
+   
+   bins = hist0.GetNbinsX()
+   
+   for bin in xrange(bins):
+      bl0 = hist0.GetXaxis().GetBinLabel(bin)
+      bl1 = hist1.GetXaxis().GetBinLabel(bin)
+      
+      bin_dict0[StripVersion(bl0)]=hist0.GetBinContent(bin)
+      bin_dict1[StripVersion(bl1)]=hist1.GetBinContent(bin)
+      bin_list.append(StripVersion(bl0))
+      
 
-   #####
+   nbins = 0
+   for key in bin_dict0:
+      if bin_dict1.has_key(key):
+         nbins += 1
+      else:
+         bin_list.remove(key)
 
-#if __name__=='__main__':
-#   main()
+   nhist0 = TH1F("counts","counts",nbins+1,0,nbins+1)
+   nhist1 = TH1F("counts","counts",nbins+1,0,nbins+1)
+   
+   i = 1
+   for key in bin_list:
+      nhist0.Fill(i,bin_dict0[key])
+      nhist1.Fill(i,bin_dict1[key])
+      nhist0.GetXaxis().SetBinLabel(i,key)
+      nhist1.GetXaxis().SetBinLabel(i,key)
+      i+=1
+      # if bin_dict0[key] != bin_dict1[key]:
+      #    print "key = ",key
+      #    print bin_dict0[key]
+      #    print bin_dict1[key]
+      #    print "===="
+      
+      
+   title = nhist0.GetName()
+   can = TCanvas(title,title,1000,600)
+   pad1 = TPad("pad1","pad1",0,0.28,1,1)
+   leg = TLegend(0.73,0.66,0.90,0.8)
+   leg.SetFillColor(0)
+   leg.AddEntry(nhist0,rel0)
+   leg.AddEntry(nhist1,rel1)
+   
+   pad1.SetBottomMargin(0)
+   pad1.Draw()
+   pad1.cd()
+   nhist0.SetStats(0)
+   nhist1.SetStats(0)
+   nhist1.SetLineColor(4)
+   nhist0.SetLineColor(2)
+   #nhist0.LabelsOption("a")
+   nhist0.SetLabelSize(0.02)
+   #nhist1.LabelsOption("a")
+   nhist1.SetLabelSize(0.02)
+   nhist1.DrawCopy()
+   nhist0.Draw("same")
+   leg.Draw("same")
+   can.cd()
+   
+   pad2 = TPad("pad2","pad2",0,0,1,0.28)
+   pad2.SetTopMargin(0)
+   pad2.SetBottomMargin(0.34)
+   pad2.Draw()
+   pad2.cd()
+   nhist1.Sumw2()
+   nhist1.SetTitle("")
+   nhist1.SetStats(0)
+   nhist1.Add(nhist0,-1)
+   nhist1.Divide(nhist0)
+   nhist1.GetYaxis().SetTitle("New-Old/Old")
+   #nhist0.SetMarkerStyle(21)
+   nhist1.SetLineColor(1)
+   nhist1.GetYaxis().CenterTitle()
+   nhist1.GetYaxis().SetTitleSize(.065)
+   nhist1.GetYaxis().SetTitleOffset(.4)
+   nhist1.Draw("ep")
+   can.SaveAs(output_file_dir+data_dir+"menu_changes_by_path.png")
+   
+   print "after count hist before templating "#, time.time()-start_time
+
+   list_of_plots=['decayType_vs_dataset_0not1.png','decayType_vs_dataset_1not0.png','decayType_vs_dataset_0not1_relative.png','decayType_vs_dataset_1not0_relative.png']
+
+   env = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.dirname(__file__)))
+   env.tests["sum"] = lambda s: s == "Total"
+   template = env.get_template('template.html')
+
+   vid = rel0+' vs '+rel1
+
+   openfile = output_file_dir+'index.html'
+   f = open(openfile, 'w')
+   try:
+      f.write(template.render(
+            ids=vid,
+            overview=overview_list,
+            summary=summary_list,
+      ).encode('utf-8'))
+   finally:
+      f.close()
+   print "after templating "#, time.time()-start_time
