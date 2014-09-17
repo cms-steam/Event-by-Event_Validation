@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>{{id}}</title>
+		<style>
+			@import url(http://fonts.googleapis.com/css?family=Lobster+Two:700italic);
+
+			body {
+				font-family:"Trebuchet MS";
+			}
+
+			.lobster {font-family: 'Lobster Two', cursive;}
+
+			.center {
+				margin-left: auto;
+				margin-right: auto;
+			}
+
+			h1, h2, h3 {clear: left}
+
+			table {
+				border-collapse:collapse;
+			}
+
+			td, th {
+				border:1px solid #333437;
+				padding:3px 7px 2px 7px;
+			        font-size: 0.6em;
+			}
+
+			th {
+				text-align:left;
+				padding-top:5px;
+				padding-bottom:4px;
+				background-color:#454648;
+				color:#ffffff;
+			}
+
+			tr.alt td {
+				color:#000000;
+				background-color:#B4B8C1;
+			}
+
+			ul.img-list {
+				padding: 0;
+			}
+
+			ul.img-list li {
+				display: inline-block;
+				position: relative;
+			}
+
+			ul.img-list img {
+				border-radius: 15px;
+			}
+
+			span.text-content {
+				background: rgba(0,0,0,0.6);
+				border-radius: 15px;
+				color: white;
+				display: table;
+				font-size: 1.5em;
+				height: 150px;
+				left: 15px;
+				position: absolute;
+				top: -5px;
+				width: 750px;
+				opacity: 0;
+				-webkit-transition: opacity 500ms;
+				-moz-transition: opacity 500ms;
+				-o-transition: opacity 500ms;
+				transition: opacity 500ms;
+			}
+
+			span.text-content span {
+				display: table-cell;
+				text-align: center;
+				vertical-align: middle;
+			}
+
+			ul.img-list li:hover span.text-content {
+				opacity: 1;
+			}
+
+			.button {
+				border: 1px solid #666;
+				border-radius: .5em;
+				padding: .3em;
+			}
+
+			.button a {
+				color: black;
+				text-decoration: none;
+			}
+
+			.right {
+				border-top-left-radius: 0;
+				border-bottom-left-radius: 0;
+				margin-left: 0;
+			}
+
+			.left {
+				border-top-right-radius: 0;
+				border-bottom-right-radius: 0;
+				margin-right: 0;
+			}
+
+			.depressed {
+				box-shadow: 0px -1em 5px 0px rgba(0,0,0,0.08) inset;
+			}
+
+			.pressed {
+				box-shadow: 0px 1em 10px 0px rgba(0,0,0,0.28) inset;
+			}
+		</style>
+
+		{% macro label_wrapper(img_name, label) %}
+			<li><img
+					{% for k, v in kwargs.iteritems() %}
+						{{ k }}="{{ v }}"
+					{% endfor %}
+				src="{{ img_name }}">
+				<span class="text-content"><span>
+					{{ label }}
+				</span></span>
+			</img></li>
+		{% endmacro %}
+
+		<script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+		<script>
+			function src_replace(sel, a, b) {
+				$(sel).attr("src", function(idx, src) {
+					return src.replace(a, b);
+				});
+			};
+
+			$(document).ready(function() {
+				$("tr.tasksummary").hide();
+				$("div.good.more").hide();
+				$("table#logs").hide();
+				$("div.foreman.more").hide();				
+
+				$("a#tasksummary").bind('click', function() {
+					$("tr.tasksummary").slideToggle();
+					$("span#tasksummary").toggleClass("depressed");
+					$("span#tasksummary").toggleClass("pressed");
+					return false;
+				});
+
+			});
+		</script>
+	</head>
+	<body>
+
+	  <h1>{{ ids }} Event-by-Event Validation Summary</h1>
+	  <table width="50%" border="0" cellpadding="5" cellspacing="5" align="left">
+	    <tbody>
+	      <td>
+		<p>
+		  <font size="2">
+		    {% for row in overview %}
+		    {{ row }}<br>
+		    {% endfor %}
+		  </font>
+		</p>
+	      </td>
+	    </tbody>
+	  </table>
+	  
+	  <p><a href="data/"><h1>Data</h1></a></p>
+
+	  <h1>Counts by Path</h1>
+	  <div style="float:center">
+            <img src="data/menu_changes_by_path.png"></img>
+          </div>
+	  &nbsp;
+	  <h1>Absolute changes gained by decay type and dataset</h1>
+	  <div style="float:center">
+            <img src="data/decayType_vs_dataset_1not0.png"></img>
+          </div>
+
+	  <h1>Relative changes gained by decay type and dataset</h1>
+	  <div style="float:center">
+            <img src="data/decayType_vs_dataset_1not0_relative.png"></img>
+          </div>
+
+	  <h1>Absolute changes lost by decay type and dataset</h1>
+	  <div style="float:center">
+            <img src="data/decayType_vs_dataset_0not1.png"></img>
+          </div>
+
+	  <h1>Relative changes lost by decay type and dataset</h1>
+	  <div style="float:center">
+            <img src="data/decayType_vs_dataset_0not1_relative.png"></img>
+          </div>
+
+
+	  <h1>All Changes</h1>
+	  <table style="font-size=0.5em;">
+	    <tr>	    
+	    {% for col in allTypes[0] %}
+	      <th>{{ col }}</th>
+	    {% endfor %}
+	    </tr>
+	    {% for row in allTypes[1:] %}
+	    {% if row[0] is sum %}
+	    <tr>
+	    {% else %}
+	    <tr class="tasksummary{{ loop.cycle('', ' alt') }}">
+	    {% endif %}
+	      {% for cell in row %}
+	      <td>{{ cell }}</td>
+	      {% endfor %}
+	    </tr>
+	    {% endfor %}
+	  </table>
+
+	  <h1>All Hadronic Changes</h1>
+	  <table style="font-size=0.5em;">
+	    <tr>	    
+	    {% for col in allHad[0] %}
+	      <th>{{ col }}</th>
+	    {% endfor %}
+	    </tr>
+	    {% for row in allHad[1:] %}
+	    {% if row[0] is sum %}
+	    <tr>
+	    {% else %}
+	    <tr class="tasksummary{{ loop.cycle('', ' alt') }}">
+	    {% endif %}
+	      {% for cell in row %}
+	      <td>{{ cell }}</td>
+	      {% endfor %}
+	    </tr>
+	    {% endfor %}
+	  </table>
+	  
+	  <h1>Double Electron Changes</h1>
+	  <table style="font-size=0.5em;">
+	    <tr>	    
+	    {% for col in doubleEle[0] %}
+	      <th>{{ col }}</th>
+	    {% endfor %}
+	    </tr>
+	    {% for row in doubleEle[1:] %}
+	    {% if row[0] is sum %}
+	    <tr>
+	    {% else %}
+	    <tr class="tasksummary{{ loop.cycle('', ' alt') }}">
+	    {% endif %}
+	      {% for cell in row %}
+	      <td>{{ cell }}</td>
+	      {% endfor %}
+	    </tr>
+	    {% endfor %}
+	  </table>
+
+	  <h1>Double Muon Changes</h1>
+	  <table style="font-size=0.5em;">
+	    <tr>	    
+	    {% for col in doubleMu[0] %}
+	      <th>{{ col }}</th>
+	    {% endfor %}
+	    </tr>
+	    {% for row in doubleMu[1:] %}
+	    {% if row[0] is sum %}
+	    <tr>
+	    {% else %}
+	    <tr class="tasksummary{{ loop.cycle('', ' alt') }}">
+	    {% endif %}
+	      {% for cell in row %}
+	      <td>{{ cell }}</td>
+	      {% endfor %}
+	    </tr>
+	    {% endfor %}
+	  </table>
+
+	  <h1>Double Tau Changes</h1>
+	  <table style="font-size=0.5em;">
+	    <tr>	    
+	    {% for col in doubleTau[0] %}
+	      <th>{{ col }}</th>
+	    {% endfor %}
+	    </tr>
+	    {% for row in doubleTau[1:] %}
+	    {% if row[0] is sum %}
+	    <tr>
+	    {% else %}
+	    <tr class="tasksummary{{ loop.cycle('', ' alt') }}">
+	    {% endif %}
+	      {% for cell in row %}
+	      <td>{{ cell }}</td>
+	      {% endfor %}
+	    </tr>
+	    {% endfor %}
+	  </table>
+
+	  <h1>Single Electron Changes</h1>
+	  <table style="font-size=0.5em;">
+	    <tr>	    
+	    {% for col in singleEle[0] %}
+	      <th>{{ col }}</th>
+	    {% endfor %}
+	    </tr>
+	    {% for row in singleEle[1:] %}
+	    {% if row[0] is sum %}
+	    <tr>
+	    {% else %}
+	    <tr class="tasksummary{{ loop.cycle('', ' alt') }}">
+	    {% endif %}
+	      {% for cell in row %}
+	      <td>{{ cell }}</td>
+	      {% endfor %}
+	    </tr>
+	    {% endfor %}
+	  </table>
+
+	  <h1>Single Muon Changes</h1>
+	  <table style="font-size=0.5em;">
+	    <tr>	    
+	    {% for col in singleMu[0] %}
+	      <th>{{ col }}</th>
+	    {% endfor %}
+	    </tr>
+	    {% for row in singleMu[1:] %}
+	    {% if row[0] is sum %}
+	    <tr>
+	    {% else %}
+	    <tr class="tasksummary{{ loop.cycle('', ' alt') }}">
+	    {% endif %}
+	      {% for cell in row %}
+	      <td>{{ cell }}</td>
+	      {% endfor %}
+	    </tr>
+	    {% endfor %}
+	  </table>
+
+	  <h1>Single Tau Changes</h1>
+	  <table style="font-size=0.5em;">
+	    <tr>	    
+	    {% for col in singleTau[0] %}
+	      <th>{{ col }}</th>
+	    {% endfor %}
+	    </tr>
+	    {% for row in singleTau[1:] %}
+	    {% if row[0] is sum %}
+	    <tr>
+	    {% else %}
+	    <tr class="tasksummary{{ loop.cycle('', ' alt') }}">
+	    {% endif %}
+	      {% for cell in row %}
+	      <td>{{ cell }}</td>
+	      {% endfor %}
+	    </tr>
+	    {% endfor %}
+	  </table>
+
+	  <h1>Electron + Muon Changes</h1>
+	  <table style="font-size=0.5em;">
+	    <tr>	    
+	    {% for col in eleMu[0] %}
+	      <th>{{ col }}</th>
+	    {% endfor %}
+	    </tr>
+	    {% for row in eleMu[1:] %}
+	    {% if row[0] is sum %}
+	    <tr>
+	    {% else %}
+	    <tr class="tasksummary{{ loop.cycle('', ' alt') }}">
+	    {% endif %}
+	      {% for cell in row %}
+	      <td>{{ cell }}</td>
+	      {% endfor %}
+	    </tr>
+	    {% endfor %}
+	  </table>
+
+	  <h1>Electron + Tau Changes</h1>
+	  <table style="font-size=0.5em;">
+	    <tr>	    
+	    {% for col in eleTau[0] %}
+	      <th>{{ col }}</th>
+	    {% endfor %}
+	    </tr>
+	    {% for row in eleTau[1:] %}
+	    {% if row[0] is sum %}
+	    <tr>
+	    {% else %}
+	    <tr class="tasksummary{{ loop.cycle('', ' alt') }}">
+	    {% endif %}
+	      {% for cell in row %}
+	      <td>{{ cell }}</td>
+	      {% endfor %}
+	    </tr>
+	    {% endfor %}
+	  </table>
+
+	  <h1>Muon + Tau Changes</h1>
+	  <table style="font-size=0.5em;">
+	    <tr>	    
+	    {% for col in muTau[0] %}
+	      <th>{{ col }}</th>
+	    {% endfor %}
+	    </tr>
+	    {% for row in muTau[1:] %}
+	    {% if row[0] is sum %}
+	    <tr>
+	    {% else %}
+	    <tr class="tasksummary{{ loop.cycle('', ' alt') }}">
+	    {% endif %}
+	      {% for cell in row %}
+	      <td>{{ cell }}</td>
+	      {% endfor %}
+	    </tr>
+	    {% endfor %}
+	  </table>
+
+	  
+	</body>
+</html>
