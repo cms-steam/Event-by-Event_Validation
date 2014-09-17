@@ -1,11 +1,6 @@
 #shebang
 from ROOT import TFile,TTree,TH2F, TH1D, TH1F, TPie, TPad, TLegend, TCanvas, gROOT
 import sys, os, time, array, subprocess, commands, re, string
-import jinja2 
-
-from os.path import expanduser
-from collections import defaultdict
-from datetime import datetime
 
 gROOT.SetBatch()
 
@@ -80,15 +75,15 @@ if __name__=='__main__':
 
    rel0 = '720p4'
    rel1 = '720p5'
-   output_file_dir = '/afs/cern.ch/user/m/muell149/steam_validation/'+rel0+'_'+rel1+'/'
+   output_file_dir = rel0+'_'+rel1+'/'
    data_dir='data/'
 
    subprocess.call("mkdir "+output_file_dir,shell=True)
    subprocess.call("mkdir "+output_file_dir+data_dir,shell=True)
 
-   output_log = open(output_file_dir+data_dir+rel0+'_'+rel1+'_compare_output.log',"w")
+   output_log = open(output_file_dir+data_dir+'summary.log',"w")
 
-   output_table = open(output_file_dir+data_dir+'all_decay_types.csv',"w")
+   output_table = open(output_file_dir+data_dir+'allDecayTypes.csv',"w")
    output_DoubleEle = open(output_file_dir+data_dir+'DoubleEle.csv',"w")
    output_DoubleMu = open(output_file_dir+data_dir+'DoubleMu.csv',"w")
    output_DoubleTau = open(output_file_dir+data_dir+'DoubleTau.csv',"w")
@@ -102,8 +97,8 @@ if __name__=='__main__':
    file_list = [output_table,output_DoubleEle,output_DoubleMu,output_DoubleTau,output_EleMu,output_EleTau,output_MuTau,output_SingleEle,output_SingleMu,output_SingleTau,output_AllHad]
 
    #output_event_changes = open('event_changes.csv',"w")
-   file0 = '720p4.root'
-   file1 = '720p5.root'
+   file0 = '/uscms_data/d3/muell149/HLTONLINE/CMSSW_7_0_0_pre0/src/DQMOffline/Trigger/test/720p4.root'
+   file1 = '/uscms_data/d3/muell149/HLTONLINE/CMSSW_7_0_0_pre0/src/DQMOffline/Trigger/test/720p5.root'
    file_rel0 = TFile(file0)
    file_rel1 = TFile(file1)
    hlt_tree0 = file_rel0.Get('genparticles/the_HLT_tree_A')
@@ -636,24 +631,3 @@ if __name__=='__main__':
    nhist1.Draw("ep")
    can.SaveAs(output_file_dir+data_dir+"menu_changes_by_path.png")
    
-   print "after count hist before templating "#, time.time()-start_time
-
-   list_of_plots=['decayType_vs_dataset_0not1.png','decayType_vs_dataset_1not0.png','decayType_vs_dataset_0not1_relative.png','decayType_vs_dataset_1not0_relative.png']
-
-   env = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.dirname(__file__)))
-   env.tests["sum"] = lambda s: s == "Total"
-   template = env.get_template('template.html')
-
-   vid = rel0+' vs '+rel1
-
-   openfile = output_file_dir+'index.html'
-   f = open(openfile, 'w')
-   try:
-      f.write(template.render(
-            ids=vid,
-            overview=overview_list,
-            summary=summary_list,
-      ).encode('utf-8'))
-   finally:
-      f.close()
-   print "after templating "#, time.time()-start_time
