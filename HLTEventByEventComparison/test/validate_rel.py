@@ -83,7 +83,6 @@ if __name__=='__main__':
    output_file_dir = '/afs/cern.ch/user/m/muell149/steam_validation/'+rel0+'_'+rel1+'/'
    data_dir='data/'
 
-   subprocess.call("mkdir "+output_file_dir,shell=True)
    subprocess.call("mkdir "+output_file_dir+data_dir,shell=True)
 
    output_log = open(output_file_dir+data_dir+rel0+'_'+rel1+'_compare_output.log',"w")
@@ -99,6 +98,7 @@ if __name__=='__main__':
    output_SingleMu = open(output_file_dir+data_dir+'SingleMu.csv',"w")
    output_SingleTau = open(output_file_dir+data_dir+'SingleTau.csv',"w")
    output_AllHad = open(output_file_dir+data_dir+'AllHad.csv',"w")
+
    file_list = [output_table,output_DoubleEle,output_DoubleMu,output_DoubleTau,output_EleMu,output_EleTau,output_MuTau,output_SingleEle,output_SingleMu,output_SingleTau,output_AllHad]
 
    #output_event_changes = open('event_changes.csv',"w")
