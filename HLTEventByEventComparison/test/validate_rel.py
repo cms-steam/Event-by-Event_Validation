@@ -21,12 +21,6 @@ def make_list(dict_num,dict_str):
          list = [key,dict_str[key][0],dict_str[key][1],dict_num[key][0],dict_num[key][1],dict_num[key][1]-dict_num[key][0],abs(dict_num[key][1]-dict_num[key][0]),dict_num[key][2],dict_num[key][3],dict_num[key][2]+dict_num[key][3]]
          list_of_lists.append(list)
    return list_of_lists
-
-#list_of_lists = [[path1],[path2],[path3],....,[pathN]]
-#[pathN] = [dict_str[key][0],dict_str[key][1]]
-#[HLT_M] = [dataset, module, counts rel0, counts rel0, change in counts, absolute change in counts, fired rel0 not 1, fired rel1 not 0, # of changed events]
-# # of changed events = # of times a path fired in rel0, not rel1 + times it fired in 1 not 0
-# 
  
 def GetDecayType(gen_tree):
    num_ele=0
@@ -63,42 +57,34 @@ def GetDecayType(gen_tree):
 
    return decay_type
 
+def SetupEventDict(in_dict,in_tree):
+   event_branch = in_tree.GetBranch("event")
+   branch_entries = event_branch.GetEntries()
+   event_leaf = event_branch.GetLeaf("event")
+   for entri in xrange(branch_entries):
+      event_leaf.GetBranch().GetEntry(entri)
+      event_num = event_leaf.GetValue()
+      if not in_dict.has_key(event_num):
+         in_dict[event_num]=[entri]
+      else:
+         in_dict[event_num].append(entri)
+   return in_dict
+
+
 def StripVersion(name):
    if re.match('.*_v[0-9]+',name):
       name = name[:name.rfind('_')]
       name = string.strip(name)
    return name
 
-
-#def main():
 if __name__=='__main__':
 
-   rel0 = '720p4'
-   rel1 = '720p5'
-   output_file_dir = rel0+'_'+rel1+'/'
-   data_dir='data/'
+   #speficy input
+   rel0 = 'test'
+   rel1 = 'test'
+   file0 = '/uscms_data/d3/muell149/HLTONLINE/CMSSW_7_0_0_pre0/src/DQMOffline/Trigger/test/720p2.root'
+   file1 = '/uscms_data/d3/muell149/HLTONLINE/CMSSW_7_0_0_pre0/src/DQMOffline/Trigger/test/720p3.root'
 
-   subprocess.call("mkdir "+output_file_dir,shell=True)
-   subprocess.call("mkdir "+output_file_dir+data_dir,shell=True)
-
-   output_log = open(output_file_dir+data_dir+'summary.log',"w")
-
-   output_table = open(output_file_dir+data_dir+'allDecayTypes.csv',"w")
-   output_DoubleEle = open(output_file_dir+data_dir+'DoubleEle.csv',"w")
-   output_DoubleMu = open(output_file_dir+data_dir+'DoubleMu.csv',"w")
-   output_DoubleTau = open(output_file_dir+data_dir+'DoubleTau.csv',"w")
-   output_EleMu = open(output_file_dir+data_dir+'EleMu.csv',"w")
-   output_EleTau = open(output_file_dir+data_dir+'EleTau.csv',"w")
-   output_MuTau = open(output_file_dir+data_dir+'MuTau.csv',"w")
-   output_SingleEle = open(output_file_dir+data_dir+'SingleEle.csv',"w")
-   output_SingleMu = open(output_file_dir+data_dir+'SingleMu.csv',"w")
-   output_SingleTau = open(output_file_dir+data_dir+'SingleTau.csv',"w")
-   output_AllHad = open(output_file_dir+data_dir+'AllHad.csv',"w")
-   file_list = [output_table,output_DoubleEle,output_DoubleMu,output_DoubleTau,output_EleMu,output_EleTau,output_MuTau,output_SingleEle,output_SingleMu,output_SingleTau,output_AllHad]
-
-   #output_event_changes = open('event_changes.csv',"w")
-   file0 = '/uscms_data/d3/muell149/HLTONLINE/CMSSW_7_0_0_pre0/src/DQMOffline/Trigger/test/720p4.root'
-   file1 = '/uscms_data/d3/muell149/HLTONLINE/CMSSW_7_0_0_pre0/src/DQMOffline/Trigger/test/720p5.root'
    file_rel0 = TFile(file0)
    file_rel1 = TFile(file1)
    hlt_tree0 = file_rel0.Get('genparticles/the_HLT_tree_A')
@@ -108,42 +94,28 @@ if __name__=='__main__':
       
    entries0 = hlt_tree0.GetEntriesFast()
    entries1 = hlt_tree1.GetEntriesFast()
-
    gen_entries0 = gen_tree0.GetEntriesFast()
    gen_entries1 = gen_tree1.GetEntriesFast()
    
-   output_log.write("Entries in tree0: %s\n"%entries0)
-   output_log.write("Entries in tree1: %s\n"%entries1)
-   #output_event_changes.write("Decay Type, Dataset, Path, 0not1,1not0\n")
-   
-   #initialize some counters
+   #initialize some counter indices
    evt0 = 0
    evt1 = 0
    pidx0 = 0
    pidx1 = 0
-   idx0 = 0
-   idx1 = 0
-   diff0 = 0
-   diff1 = 0
-   proceed = True
-   diff = 0
+
    #initialize dicts
-   accepted_paths = {'path':0}
    datasetIDX_v_path = {'path': 0}
    get_gen_entries0_from_event = {0:0} #event number : entry number
    get_gen_entries1_from_event = {0:0}
    
    path_str_dict = {}#{'path':['dataset','module']}
    event_dict = {}#{'event':['changed','fired 0not1','fired 1not0']}
-
    output_list = [{} for i in xrange(11)]
-   
    
    #make hists
    fired_rel0_not1_decayType_vs_dataset = TH2F("fired_rel0_didntfire_rel1_decay_type_vs_datasets","fired_rel0_didntfire_rel1_decay_type_vs_datasets",44,0,44,11,0,11)
-   #fired_rel1_not0_decayType_vs_dataset= TH2F("fired_rel1_didntfire_rel0_decay_type_vs_datasets","fired_rel1_didntfire_rel0_decay_type_vs_datasets",44,0,44,11,0,11)
 
-   #set some bin labels
+   #set bin labels
    fired_rel0_not1_decayType_vs_dataset.GetYaxis().SetBinLabel(1,"Double Ele")
    fired_rel0_not1_decayType_vs_dataset.GetYaxis().SetBinLabel(2,"Double Mu")
    fired_rel0_not1_decayType_vs_dataset.GetYaxis().SetBinLabel(3,"Double Tau")
@@ -165,6 +137,7 @@ if __name__=='__main__':
 
    #stuff for primary datasets
    dsmap = file_rel0.Get("newHLTOffline/map_of_trig_to_trig_types")
+   #print "dsmap", num_PD = dsmap.GetYaxis().GetNbins() - 7 
    num_PD = 43 #number of primary datsets - 1
    fired_rel0_not1_decayType_vs_dataset.GetXaxis().SetBinLabel(num_PD,"NONE")#need to add these since some paths don't have a dataset
    
@@ -179,7 +152,10 @@ if __name__=='__main__':
    fired_rel1 = fired_rel1_not0_decayType_vs_dataset.Clone()
    fired_rel0 = fired_rel0_not1_decayType_vs_dataset.Clone()
    
-   #set some branch addresses
+   #initialize arrays
+   
+   #branch0 = {}
+   #branch0['hlt_event'] = array.array("i",[0])
    hlt_event0 = array.array("i",[0])
    gen_event0 = array.array("i",[0])
    hlt_path_accept0 = array.array("i",[0])
@@ -194,6 +170,7 @@ if __name__=='__main__':
    hlt_path_name1= array.array("c",[" "]*100)
    hlt_module1= array.array("c",[" "]*150)
 
+   #setting branch address
    hlt_tree0.SetBranchAddress("event",hlt_event0)
    gen_tree0.SetBranchAddress("event",gen_event0)
    hlt_tree0.SetBranchAddress("path_accept",hlt_path_accept0)
@@ -208,47 +185,18 @@ if __name__=='__main__':
    hlt_tree1.SetBranchAddress("path_name",hlt_path_name1)
    hlt_tree1.SetBranchAddress("last_module_with_saved_tags_label",hlt_module1)
 
-   #new loop stuff.....
-   print "before new loops ", time.time()-start_time
-   evt_dct0 = {} #event num, entry in tree
-   event_br0 = hlt_tree0.GetBranch("event")
-   br0_entries = event_br0.GetEntries()
-   event_lf0 = event_br0.GetLeaf("event")
-   for entri in xrange(br0_entries):
-      event_lf0.GetBranch().GetEntry(entri)
-      ev_num0= event_lf0.GetValue()
-      if not evt_dct0.has_key(ev_num0):
-         evt_dct0[ev_num0]=[entri]
-      else:
-         evt_dct0[ev_num0].append(entri)
+   evt_dct0 = {} 
+   evt_dct1 = {}
+   SetupEventDict(evt_dct0,hlt_tree0)
+   SetupEventDict(evt_dct1,hlt_tree1)
 
-   evt_dct1 = {} #event num, entry in tree
-   event_br1 = hlt_tree1.GetBranch("event")
-   br1_entries = event_br1.GetEntries()
-   event_lf1 = event_br1.GetLeaf("event")
-   for entri in xrange(br1_entries):
-      event_lf1.GetBranch().GetEntry(entri)
-      ev_num1= event_lf1.GetValue()
-      if not evt_dct1.has_key(ev_num1):
-         evt_dct1[ev_num1]=[entri]
-      else:
-         evt_dct1[ev_num1].append(entri)
-
-   if len(evt_dct0) > len(evt_dct1):
-      evt_dctL = evt_dct0
-      evt_dctS = evt_dct1
-   else:
-      evt_dctL = evt_dct1
-      evt_dctS = evt_dct0
-
-   #make sure you're using a key (event) in both samples
-   for key in evt_dctS.keys():
-      if evt_dctL.has_key(key):
+   #find a key (event) present in both samples
+   for key in evt_dct0.keys():
+      if evt_dct1.has_key(key):
          s_key=key
          break
-   print "after new loops, before trigger list ", time.time()-start_time
-   print "found a good key"
-   index_map={}
+
+   trigger_index_map={} #provides a map of trigger indices (in case they mismatch)
    for trg0 in xrange(len(evt_dct0[s_key])):
       for trg1 in xrange(len(evt_dct1[s_key])):
          hlt_tree0.GetEntry(evt_dct0[s_key][trg0])
@@ -256,24 +204,18 @@ if __name__=='__main__':
          n1 = hlt_path_name0.tostring()[:hlt_path_name0.tostring().find('\x00')]
          n2 = hlt_path_name1.tostring()[:hlt_path_name1.tostring().find('\x00')]
          if n1 == n2:
-            index_map[trg0]=trg1
+            trigger_index_map[trg0]=trg1
 
-   print "after tirgger list loops, before major loop ", time.time()-start_time
+   print "map generated, length = ",len(trigger_index_map)," starting event loop"
 
-   print "map generated, length = ",len(index_map)," starting loop"
-#   print index_map
-#   c=0
-   for key in evt_dctS.keys():
-      if evt_dctL.has_key(key):
-         # if c > 100:
-         #    print "break"
-         #    break
-         # c+=1
-         for keyb in index_map.keys():
-            #print "start of inner loop ", time.time()-start_time
+   for key in evt_dct0.keys():
+      if evt_dct1.has_key(key):
+         for keyb in trigger_index_map.keys():
+
             hlt_tree0.GetEntry(evt_dct0[key][keyb])
-            hlt_tree1.GetEntry(evt_dct1[key][index_map[keyb]])
+            hlt_tree1.GetEntry(evt_dct1[key][trigger_index_map[keyb]])
             
+            #find largest: event number, path index
             if hlt_event0[0] > evt0:
                evt0 = hlt_event0[0]
             if hlt_event1[0] > evt1:
@@ -284,7 +226,7 @@ if __name__=='__main__':
                pidx1 = hlt_path_index1[0]
 
             gen_tree0.GetEntry(evt_dct0[key][keyb])
-            gen_tree1.GetEntry(evt_dct1[key][index_map[keyb]])
+            gen_tree1.GetEntry(evt_dct1[key][trigger_index_map[keyb]])
                
             event = hlt_event0[0]
             name = hlt_path_name0.tostring()[:hlt_path_name0.tostring().find('\x00')]
@@ -309,7 +251,7 @@ if __name__=='__main__':
                datasetIDX_v_path[name] = num_PD
 
 ###################### stuff for primary datasets ################
-            #print "after PD stuff ", time.time()-start_time
+
             path_str_dict[name][1] = module
             decaytype = GetDecayType(gen_tree0)
                         
@@ -358,23 +300,42 @@ if __name__=='__main__':
                      event_dict[event][2] += 1
                   except KeyError:
                      event_dict[event] = [1,0,1]
-            #print "end of inner loop ", time.time()-start_time
+
                   
    #####
    print "after main event loop, before log writing ", time.time()-start_time
+
    sum_path_accpt0 = len([arr[0] for arr in output_list[0].values() if arr[0]!=0])
    sum_path_accpt1 = len([arr[1] for arr in output_list[0].values() if arr[1]!=0])
    sum_path_fired0_not1 = len([arr[2] for arr in output_list[0].values() if arr[2]!=0])
    sum_path_fired1_not0 = len([arr[3] for arr in output_list[0].values() if arr[3]!=0])
-
    sum_event_fired0_not1 = len([arr[1] for arr in event_dict.values() if arr[1]!=0])
    sum_event_fired1_not0 = len([arr[2] for arr in event_dict.values() if arr[2]!=0])
-
    sum_changes = len([arr[0] for arr in event_dict.values() if arr[0]!=0])
 
+   output_file_dir = rel0+'_'+rel1+'/'
+   data_dir='data/'
+   subprocess.call("mkdir "+output_file_dir,shell=True)
+   subprocess.call("mkdir "+output_file_dir+data_dir,shell=True)
+
+   output_log = open(output_file_dir+data_dir+'summary.log',"w")
+   output_table = open(output_file_dir+data_dir+'allDecayTypes.csv',"w")
+   output_DoubleEle = open(output_file_dir+data_dir+'DoubleEle.csv',"w")
+   output_DoubleMu = open(output_file_dir+data_dir+'DoubleMu.csv',"w")
+   output_DoubleTau = open(output_file_dir+data_dir+'DoubleTau.csv',"w")
+   output_EleMu = open(output_file_dir+data_dir+'EleMu.csv',"w")
+   output_EleTau = open(output_file_dir+data_dir+'EleTau.csv',"w")
+   output_MuTau = open(output_file_dir+data_dir+'MuTau.csv',"w")
+   output_SingleEle = open(output_file_dir+data_dir+'SingleEle.csv',"w")
+   output_SingleMu = open(output_file_dir+data_dir+'SingleMu.csv',"w")
+   output_SingleTau = open(output_file_dir+data_dir+'SingleTau.csv',"w")
+   output_AllHad = open(output_file_dir+data_dir+'AllHad.csv',"w")
+   file_list = [output_table,output_DoubleEle,output_DoubleMu,output_DoubleTau,output_EleMu,output_EleTau,output_MuTau,output_SingleEle,output_SingleMu,output_SingleTau,output_AllHad]
+
+   output_log.write("Entries in tree0: %s\n"%entries0)
+   output_log.write("Entries in tree1: %s\n"%entries1)   
    output_log.write("Events in rel0: %s\n"%evt0)
    output_log.write("Events in rel1: %s\n"%evt1)
-
    output_log.write("Paths in rel0: %s\n"%pidx0)
    output_log.write("Paths in rel1: %s\n"%pidx1)
    output_log.write("events with paths that fired in %(1)s and didnt fire in %(2)s : %(3)s\n"%{"1":rel0,"2":rel1,"3":sum_event_fired0_not1}) 
@@ -476,17 +437,6 @@ if __name__=='__main__':
 
    print "Execution time = ", time.time()-start_time," sec"
 
-   # pi_list=[100.00*sum_changes*(pidx0+1)/entries0,1-(100.00*sum_changes*(pidx0+1)/entries0)]
-   # can0 = TCanvas("pie","pie",1)
-   # Pie = TPie("piea","pieb",2,pi_list)
-   # Pie.GetSlice(0).SetLabel("% changed events")
-   # Pie.GetSlice(1).SetLabel("% un-changed events")
-   # Pie.SetAngularOffset(30.)
-   # Pie.SetEntryRadiusOffset(4,0.1)
-   # Pie.SetEntryRadius(.35)
-   # Pie.Draw("3d")
-   # can0.SaveAs(output_file_dir+data_dir+"pie.png")
-
    #draw hists
    hist_file = TFile(output_file_dir+data_dir+"hist_file_"+rel0+"_"+rel1+".root","recreate")
    title = fired_rel0_not1_decayType_vs_dataset.GetName()
@@ -581,12 +531,6 @@ if __name__=='__main__':
       nhist0.GetXaxis().SetBinLabel(i,key)
       nhist1.GetXaxis().SetBinLabel(i,key)
       i+=1
-      # if bin_dict0[key] != bin_dict1[key]:
-      #    print "key = ",key
-      #    print bin_dict0[key]
-      #    print bin_dict1[key]
-      #    print "===="
-      
       
    title = nhist0.GetName()
    can = TCanvas(title,title,1000,600)
