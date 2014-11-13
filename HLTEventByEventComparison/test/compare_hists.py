@@ -11,8 +11,8 @@ def StripVersion(name):
 #def main():
 if __name__=='__main__':
 
-    file0 = '/afs/cern.ch/user/m/muell149/work/HLTONLINE/CMSSW_7_0_0_pre0/src/DQMOffline/Trigger/test/719_100k_noRho_CSCfix.root'
-    file1 = '/afs/cern.ch/user/m/muell149/work/HLTONLINE/CMSSW_7_0_0_pre0/src/DQMOffline/Trigger/test/720p8_100k_noRho_CSCfix_72XGT.root'
+    file0 = '/afs/cern.ch/user/m/muell149/work/HLTONLINE/CMSSW_7_0_0_pre0/src/DQMOffline/Trigger/test/721patch3_MCRUN2_72_V1A.root'
+    file1 = '/afs/cern.ch/user/m/muell149/work/HLTONLINE/CMSSW_7_0_0_pre0/src/DQMOffline/Trigger/test/721patch3_MCRUN2_72_V1A_HcalRecoParams.root'
 
     file_0 = TFile(file0)
     file_1 = TFile(file1)
@@ -60,8 +60,6 @@ if __name__=='__main__':
     pad1 = TPad("pad1","pad1",0,0.28,1,1)
     leg = TLegend(0.73,0.66,0.90,0.8)
     leg.SetFillColor(0)
-    leg.AddEntry(nhist0,'719_PRE_LS_171_V5A (25ns)')
-    leg.AddEntry(nhist1,'720p8_MCRUN2_72_V1A (25ns)')
     pad1.SetBottomMargin(0)
     pad1.Draw()
     pad1.cd()
@@ -69,12 +67,13 @@ if __name__=='__main__':
     nhist1.SetStats(0)
     nhist1.SetLineColor(4)
     nhist0.SetLineColor(2)
+    leg.AddEntry(nhist0,'reference (25ns)')
+    leg.AddEntry(nhist1,'HcalRecoParams (25ns)')
     #nhist0.LabelsOption("a")
     nhist0.SetLabelSize(0.02)
     #nhist1.LabelsOption("a")
     nhist1.SetLabelSize(0.02)
-    nhist1.GetXaxis().SetTickSize(0)
-    nhist0.GetXaxis().SetTickSize(0)
+
     nhist1.DrawCopy()
     nhist0.Draw("same")
     leg.Draw("same")
@@ -91,14 +90,13 @@ if __name__=='__main__':
     nhist1.Add(nhist0,-1)
     nhist1.Divide(nhist0)
     nhist1.GetYaxis().SetTitle("New-Old/Old")
-    nhist1.GetXaxis().SetTickSize(0)
-    nhist0.GetXaxis().SetTickSize(0)
-   #nhist0.SetMarkerStyle(21)
+ 
+  #nhist0.SetMarkerStyle(21)
     nhist1.SetLineColor(1)
     nhist1.GetYaxis().CenterTitle()
     nhist1.GetYaxis().SetTitleSize(.065)
     nhist1.GetYaxis().SetTitleOffset(.4)
     nhist1.Draw("ep")
-    can.SaveAs("menu_changes_by_path.pdf")
+    can.SaveAs("menu_changes_by_path.png")
     #can.cd()
   
