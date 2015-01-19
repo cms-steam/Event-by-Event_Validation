@@ -11,8 +11,8 @@ def StripVersion(name):
 #def main():
 if __name__=='__main__':
 
-    file0 = '/afs/cern.ch/user/m/muell149/work/HLTONLINE/CMSSW_7_0_0_pre0/src/DQMOffline/Trigger/test/721patch3_MCRUN2_72_V1A.root'
-    file1 = '/afs/cern.ch/user/m/muell149/work/HLTONLINE/CMSSW_7_0_0_pre0/src/DQMOffline/Trigger/test/721patch3_MCRUN2_72_V1A_HcalRecoParams.root'
+    file0 = '/afs/cern.ch/user/m/muell149/work/HLTONLINE/CMSSW_7_3_0/src/DQMOffline/Trigger/test/723_stage1.root'
+    file1 = '/afs/cern.ch/user/m/muell149/work/HLTONLINE/CMSSW_7_3_0/src/DQMOffline/Trigger/test/730_stage1.root'
 
     file_0 = TFile(file0)
     file_1 = TFile(file1)
@@ -20,12 +20,15 @@ if __name__=='__main__':
     hist1 = file_1.Get('newHLTOffline/hlt_count_hist')#eventbyevent/HLT_Tgt')
     
     output_log = open('summary_table.csv',"w")
-    output_log.write("PATH, COUNTS IN REFERENCE, COUNTS IN TARGET\n")
+    output_log.write("PATH, COUNTS IN REFERENCE, COUNTS IN TARGET, abs(TGT-REF)/REF, ERROR\n")
 
 
     bin_dict0 = collections.OrderedDict()#{}#{title,hits}
     bin_dict1 = collections.OrderedDict()#{}
     
+    table = []
+    row = []
+
     bins = hist0.GetNbinsX()
 
     nhist0 = TH1F("counts","counts",bins+1,0,bins+1)
@@ -52,8 +55,25 @@ if __name__=='__main__':
                print bin_dict0[key]
                print bin_dict1[key]
                print "====" 
-            output_log.write("%(1)s,%(2)s,%(3)s\n"%{"1":key,"2":bin_dict0[key],"3":bin_dict1[key]})
+
+            if bin_dict0[key] == 0:
+               if bin_dict1[key] == bin_dict0[key]:
+                  diff = 0.
+                  error = 0.
+               else:
+                  diff = 100.
+                  error = bin_dict1[key] **(0.5)
+            else:
+               diff = abs(bin_dict1[key] - bin_dict0[key])/bin_dict0[key]
+               error = diff*((1/(bin_dict1[key] + bin_dict0[key])+1/(bin_dict0[key]))**(0.5))
+            
+            row = [key,bin_dict0[key],bin_dict1[key],diff,error]
+            table.append(row)
             i+=1
+            
+    table.sort(key = lambda row: row[3],reverse=True)
+    for row in table:
+       output_log.write("%(1)s,%(2)s,%(3)s,%(4)s,%(5)s\n"%{"1":row[0],"2":row[1],"3":row[2],"4":row[3],"5":row[4]})
 
     title = nhist0.GetName()
     can = TCanvas(title,title,5000,3000)
@@ -67,8 +87,8 @@ if __name__=='__main__':
     nhist1.SetStats(0)
     nhist1.SetLineColor(4)
     nhist0.SetLineColor(2)
-    leg.AddEntry(nhist0,'reference (25ns)')
-    leg.AddEntry(nhist1,'HcalRecoParams (25ns)')
+    leg.AddEntry(nhist0,'CMSSW_7_2_3')
+    leg.AddEntry(nhist1,'CMSSW_7_3_0')
     #nhist0.LabelsOption("a")
     nhist0.SetLabelSize(0.02)
     #nhist1.LabelsOption("a")
