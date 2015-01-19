@@ -23,10 +23,10 @@ process.source = cms.Source("PoolSource",
 #    '199812:70-199812:80'
 #)
 
-process.load("DQMOffline.Trigger.GeneralHLTOffline2_cfi")
-process.load("DQMOffline.Trigger.QuickGenInfo_cfi")
+process.load("Event-by-Event_Validation.HLTEventByEventComparison.GeneralHLTOffline2_cfi")
+process.load("Event-by-Event_Validation.HLTEventByEventComparison.QuickGenInfo_cfi")
 
-process.newHLTOffline.HltProcessName = 'HLTGRun' # use 'HLT' for centrally produced samples. default is 'HLTGRun'.
+process.newHLTOffline.HltProcessName = 'TEST' # use 'HLT' for centrally produced samples. default is 'HLTGRun'.
 
 
 process.TFileService = cms.Service("TFileService",
