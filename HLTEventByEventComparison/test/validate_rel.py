@@ -80,10 +80,10 @@ def StripVersion(name):
 if __name__=='__main__':
 
    #speficy input
-   rel0 = 'test'
-   rel1 = 'test'
-   file0 = '/uscms_data/d3/muell149/HLTONLINE/CMSSW_7_0_0_pre0/src/DQMOffline/Trigger/test/720p2.root'
-   file1 = '/uscms_data/d3/muell149/HLTONLINE/CMSSW_7_0_0_pre0/src/DQMOffline/Trigger/test/720p3.root'
+   rel0 = 'CMSSW_7_2_3'
+   rel1 = 'CMSSW_7_3_0'
+   file0 = '/afs/cern.ch/user/m/muell149/work/HLTONLINE/CMSSW_7_3_0/src/DQMOffline/Trigger/test/723_stage1.root'
+   file1 = '/afs/cern.ch/user/m/muell149/work/HLTONLINE/CMSSW_7_3_0/src/DQMOffline/Trigger/test/730_stage1.root'
 
    file_rel0 = TFile(file0)
    file_rel1 = TFile(file1)
