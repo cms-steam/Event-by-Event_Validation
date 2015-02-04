@@ -21,7 +21,7 @@ Here there are a couple of options, you can edit the hlt files in test such as:
 
 OR you can grab your own config specifying the menu, GT etc:
 
-   hltGetConfiguration /dev/CMSSW_7_2_1/HLT/V118 --full --offline --mc --unprescale --process TEST --globaltag auto:run2_mc_GRun --l1-emulator 'stage1,gt' --l1Xml L1Menu_Collisions2015_25ns_v1_L1T_Scales_20101224_Imp0_0x102f.xml > hlt_stage1.py
+       hltGetConfiguration /dev/CMSSW_7_2_1/HLT/V118 --full --offline --mc --unprescale --process TEST --globaltag auto:run2_mc_GRun --l1-emulator 'stage1,gt' --l1Xml L1Menu_Collisions2015_25ns_v1_L1T_Scales_20101224_Imp0_0x102f.xml > hlt_stage1.py
        	   
 Add the following line the process.hltOutputA module:
     
