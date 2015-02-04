@@ -40,6 +40,9 @@ Now you've got your HLT results. Check out the validation package with:
 
     	   git clone git@github.com:cms-steam/Event-by-Event_Validation.git 
 
+Process the HLT output by:
+	
+
 ## Fast validation
 
 ## Slow validation
