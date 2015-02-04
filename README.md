@@ -5,6 +5,17 @@ Validation code for comparing offline HLT results
 
 There are two types of validations. One comparing event-by-event, and a faster validation comparing counts in each path. 
 
+If you're running over remote files via xrootd or crab, get a proxy with:
+
+   voms-proxy-init -voms cms
+
+Checkout HLTrigger:
+
+	 git cms-addpkg HLTrigger/Configuration
+	 cd HLTrigger/Configuration/test
+	 
+	
+
 Run the hlt cfg of your choice. Add the following line the process.hltOutputA module:
     
     'keep *_genParticles_*_*',
