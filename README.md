@@ -15,13 +15,13 @@ Checkout HLTrigger:
 	 
 Here there are a couple of options, you can edit the hlt files in test such as:
 
-     	   OnMc_HLT_FULL.py
-           OnMc_HLT_Fake.py 	
-	   OnMc_HLT_GRun.py
+     OnMc_HLT_FULL.py
+     OnMc_HLT_Fake.py
+     OnMc_HLT_GRun.py
 
 OR you can grab your own config specifying the menu, GT etc:
 
-       	   hltGetConfiguration /dev/CMSSW_7_2_1/HLT/V118 --full --offline --mc --unprescale --process TEST --globaltag auto:run2_mc_GRun --l1-emulator 'stage1,gt' --l1Xml L1Menu_Collisions2015_25ns_v1_L1T_Scales_20101224_Imp0_0x102f.xml > hlt_stage1.py
+   hltGetConfiguration /dev/CMSSW_7_2_1/HLT/V118 --full --offline --mc --unprescale --process TEST --globaltag auto:run2_mc_GRun --l1-emulator 'stage1,gt' --l1Xml L1Menu_Collisions2015_25ns_v1_L1T_Scales_20101224_Imp0_0x102f.xml > hlt_stage1.py
        	   
 Add the following line the process.hltOutputA module:
     
@@ -29,10 +29,10 @@ Add the following line the process.hltOutputA module:
 
 Run the hlt cfg of your choice either with crab or with:
 
-    	cmsRun <your_hlt_cfg.py> 
+    cmsRun <your_hlt_cfg.py> 
 
 Collect the output into a text file if running with crab:
-	
+
 	find/afs/cern.ch/user/m/muell149/work/HLTONLINE/CMSSW_7_2_3/src/HLTrigger/Configuration/test/crab_dir/res/*.root | perl -ne 'print "file:$_"' > outputA.txt
 
 
@@ -41,6 +41,5 @@ Now you've got your HLT results. Check out the validation package with:
     	   git clone git@github.com:cms-steam/Event-by-Event_Validation.git 
 
 ## Fast validation
-
 
 ## Slow validation
