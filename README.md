@@ -39,6 +39,7 @@ Now you've got your HLT results. Check out the validation package with:
     	   git clone git@github.com:cms-steam/Event-by-Event_Validation.git 
 
 Process the HLT output by compiling. Then edit gen_hlt2_cfg.py to the files you want to run over and desired output names:
+	
 	scram b -j8
 	cd Event-by-Event_Validation/HLTEventByEventComparison/test
 	emacs genhlt2_cfg.py
