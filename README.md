@@ -45,7 +45,9 @@ Process the HLT output by compiling. Then edit gen_hlt2_cfg.py to the files you 
 	emacs genhlt2_cfg.py
 	
 Run the hlt pre processor:
+
 	cmsRun genhlt2_cfg.py
+
 ## Fast validation
 
 Edit the fast validation file to run over the output files you produced with genhlt2_cfg.py and edit the display strings for the plots and results:
